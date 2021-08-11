@@ -2,6 +2,7 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Text;
 using System.Text.RegularExpressions;
 using JankShade.Properties;
 using Range = JankShade.Properties.Range;
@@ -13,6 +14,8 @@ namespace JankShade
         public string Name { get; set; }
         public Program Program { get; set; }
         public string FallbackShader { get; set; }
+        public static string IncludeFolder = @"\";
+        public static string OutputFolder = @"\";
         private List<string> _commands = new List<string>();
         private List<object> _shaderProperties = new List<object>();
         private List<string> _pragmaticDirectives = new List<string>();
@@ -117,8 +120,10 @@ namespace JankShade
             return this;
         }
 
-        public Shader AddStruct(string code)
+        public Shader AddStruct(string includeFile)
         {
+            var code = ReadFile(includeFile);
+
             if (Regex.IsMatch(code, STRUCT_REGEX))
             {
                 var structHeader = Regex.Match(code, STRUCT_REGEX).Value;
@@ -139,8 +144,10 @@ namespace JankShade
             return this;
         }
 
-        public Shader OverrideStruct(string code)
+        public Shader OverrideStruct(string includeFile)
         {
+            var code = ReadFile(includeFile);
+
             if (Regex.IsMatch(code, STRUCT_REGEX))
             {
                 var structHeader = Regex.Match(code, STRUCT_REGEX).Value;
@@ -161,8 +168,10 @@ namespace JankShade
             return this;
         }
 
-        public Shader AddFunction(string code, int index = 0)
+        public Shader AddFunction(string includeFile, int index = 0)
         {
+            var code = ReadFile(includeFile);
+
             if (Regex.IsMatch(code, FUNCTION_SIGNATURE_REGEX))
             {
                 var signature = Regex.Match(code, FUNCTION_SIGNATURE_REGEX).Value;
@@ -187,8 +196,10 @@ namespace JankShade
             return this;
         }
 
-        public Shader OverrideFunction(string code)
+        public Shader OverrideFunction(string includeFile)
         {
+            var code = ReadFile(includeFile);
+
             if (Regex.IsMatch(code, FUNCTION_SIGNATURE_REGEX))
             {
                 var signature = Regex.Match(code, FUNCTION_SIGNATURE_REGEX).Value;
@@ -239,10 +250,10 @@ namespace JankShade
 
             return newShader;
         }
-
+        
         public void SaveAs(string fileName)
         {
-            using var stream = new StreamWriter(fileName);
+            using var stream = new StreamWriter($@"{OutputFolder}\{fileName}");
 
             stream.WriteLine($"Shader \"{Name}\"");
             stream.WriteLine("{");
@@ -339,6 +350,11 @@ namespace JankShade
             }
 
             return input;
+        }
+
+        private static string ReadFile(string file)
+        {
+            return File.ReadAllText($@"{IncludeFolder}\{file}", Encoding.ASCII);
         }
     }
 }
