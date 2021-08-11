@@ -3,11 +3,16 @@ namespace JankShade.Properties
 {
     public struct Texture2D
     {
-        public Color Value { get; set; }
+        public string Value { get; set; }
 
-        public Texture2D(Color value)
+        public Texture2D(string value)
         {
             Value = value;
+        }
+
+        public override string ToString()
+        {
+            return $"\"{Value}\" " + "{}";
         }
     }
 }

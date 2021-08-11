@@ -1,7 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
 using System.Text.RegularExpressions;
 using JankShade.Properties;
 using Range = JankShade.Properties.Range;
@@ -12,19 +12,20 @@ namespace JankShade
     {
         public string Name { get; set; }
         public Program Program { get; set; }
-        private string _fallback;
-        private List<object> _shaderProperties = new List<object>();
+        public string FallbackShader { get; set; }
         private List<string> _commands = new List<string>();
-        private Dictionary<string, string> _tags = new Dictionary<string, string>();
+        private List<object> _shaderProperties = new List<object>();
         private List<string> _pragmaticDirectives = new List<string>();
-        private OrderedDictionary _functions = new OrderedDictionary();
+        private Dictionary<string, string> _tags = new Dictionary<string, string>();
         private Dictionary<string, string> _structs = new Dictionary<string, string>();
+        private readonly OrderedDictionary _functions = new OrderedDictionary();
         private const string STRUCT_REGEX = "^struct [A-z]*";
         private const string FUNCTION_SIGNATURE_REGEX = @"^[a-z]*[0-9]*(?:\s+\w+)*\s*\(([^),]*)(\s*,\s*[^),]*){0,}\)";
 
         public Shader(string name, Program program)
         {
             Name = name;
+            Program = program;
         }
 
         public Shader AddProperties(params object[] properties)
@@ -212,22 +213,25 @@ namespace JankShade
             return this;
         }
 
-        public Shader Fallback(string fallback)
+        public Shader SetFallback(string fallback)
         {
-            _fallback = fallback;
+            FallbackShader = fallback;
 
             return this;
         }
 
         public Shader Inherit(string newShaderName)
         {
-            var newShader = new Shader(newShaderName, Program);
-            newShader._shaderProperties.AddRange(_shaderProperties);
-            newShader._commands = new List<string>(_commands);
-            newShader._pragmaticDirectives = new List<string>(_pragmaticDirectives);
-            newShader._fallback = _fallback;
-            newShader._tags = new Dictionary<string, string>(_tags);
-            newShader._structs = new Dictionary<string, string>(_structs);
+            var newShader = new Shader(newShaderName, Program)
+            {
+                FallbackShader = FallbackShader,
+                _commands = new List<string>(_commands),
+                _shaderProperties = new List<object>(_shaderProperties),
+                _pragmaticDirectives = new List<string>(_pragmaticDirectives),
+                _tags = new Dictionary<string, string>(_tags),
+                _structs = new Dictionary<string, string>(_structs)
+            };
+
             foreach (var func in _functions.Keys)
             {
                 newShader._functions.Add(func, _functions[func]);
@@ -286,58 +290,12 @@ namespace JankShade
 
             foreach (var prop in _shaderProperties)
             {
-                if (!((dynamic) prop).GenerateDefinition)
+                if (!((dynamic)prop).GenerateVariable)
                 {
                     continue;
                 }
 
-                switch (prop)
-                {
-                    case ShaderProperty<int> i:
-                        stream.WriteLine($"\t\tint {i.PropertyName};");
-
-                        break;
-                    case ShaderProperty<float> fl:
-                        if (fl.DefaultValue > -2f || fl.DefaultValue < 2f)
-                        {
-                            stream.WriteLine($"\t\tfixed {fl.PropertyName};");
-                        }
-                        else if (fl.DefaultValue > -60000 || fl.DefaultValue < 60000)
-                        {
-                            stream.WriteLine($"\t\thalf {fl.PropertyName};");
-                        }
-                        else
-                        {
-                            stream.WriteLine($"\t\tfloat {fl.PropertyName};");
-                        }
-
-                        break;
-                    case ShaderProperty<Range> range:
-                        if (range.DefaultValue.Min > -2f || range.DefaultValue.Max < 2f)
-                        {
-                            stream.WriteLine($"\t\tfixed {range.PropertyName};");
-                        }
-                        else if (range.DefaultValue.Min > -60000 || range.DefaultValue.Max < 60000)
-                        {
-                            stream.WriteLine($"\t\thalf {range.PropertyName};");
-                        }
-                        else
-                        {
-                            stream.WriteLine($"\t\tfloat {range.PropertyName};");
-                        }
-
-                        break;
-                    case ShaderProperty<Texture2D> texture2d:
-                        stream.WriteLine($"\t\tsampler2D {texture2d.PropertyName};");
-                        break;
-                    case ShaderProperty<Texture2DArray> _:
-                    case ShaderProperty<Texture3D> _:
-                    case ShaderProperty<Cubemap> _:             // TODO
-                    case ShaderProperty<CubemapArray> _:
-                    case ShaderProperty<Color> _:
-                    case ShaderProperty<Vector> _:
-                        break;
-                }
+                stream.WriteLine($"\t\t{ShaderProperty<object>.GetPropertyDataType(prop)};");
             }
 
             stream.WriteLine(string.Empty);
@@ -362,9 +320,9 @@ namespace JankShade
 
             stream.WriteLine(string.Empty);
 
-            if (!string.IsNullOrEmpty(_fallback))
+            if (!string.IsNullOrEmpty(FallbackShader))
             {
-                stream.WriteLine($"\tFallback \"{_fallback}\"");
+                stream.WriteLine($"\tFallback \"{FallbackShader}\"");
             }
 
             stream.WriteLine("}");

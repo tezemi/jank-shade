@@ -3,11 +3,16 @@ namespace JankShade.Properties
 {
     public struct Cubemap
     {
-        public Color Value { get; set; }
+        public string Value { get; set; }
 
-        public Cubemap(Color value)
+        public Cubemap(string value = "White")
         {
             Value = value;
+        }
+
+        public override string ToString()
+        {
+            return Value;
         }
     }
 }

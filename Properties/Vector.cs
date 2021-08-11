@@ -31,5 +31,10 @@ namespace JankShade.Properties
             this.z = z;
             this.w = w;
         }
+
+        public override string ToString()
+        {
+            return $"({x}, {y}, {z}, {w})";
+        }
     }
 }
